@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Management - Bhromon DBMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .driver-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        .driver-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .salary-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .bulk-action-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .status-active { color: #28a745; }
+        .status-inactive { color: #6c757d; }
+        .status-on_trip { color: #ffc107; }
+        .status-suspended { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'dashboard' %}">
+                <i class="fas fa-car"></i> Bhromon DBMS
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
+                <a class="nav-link" href="{% url 'driver_applications' %}"><i class="fas fa-user-plus"></i> Applications</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Page Header -->
+        <div class="row">
+            <div class="col-md-12">
+                <h2><i class="fas fa-id-card"></i> Driver Management System</h2>
+                <p class="text-muted">Manage driver information and salaries with ACID transaction support</p>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                        <h4>{{ driver_stats.total }}</h4>
+                        <p class="text-muted mb-0">Total Drivers</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-user-check fa-2x text-success mb-2"></i>
+                        <h4>{{ driver_stats.active }}</h4>
+                        <p class="text-muted mb-0">Active</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-route fa-2x text-warning mb-2"></i>
+                        <h4>{{ driver_stats.on_trip }}</h4>
+                        <p class="text-muted mb-0">On Trip</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-money-bill-wave fa-2x text-info mb-2"></i>
+                        <h4>৳{{ driver_stats.average_salary|floatformat:0 }}</h4>
+                        <p class="text-muted mb-0">Avg. Salary</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Salary Update Panel -->
+        <div class="bulk-action-panel">
+            <form method="POST" action="{% url 'bulk_salary_update' %}" id="bulkSalaryForm">
+                {% csrf_token %}
+                <div class="row align-items-end">
+                    <div class="col-md-8">
+                        <h5><i class="fas fa-atom"></i> Bulk Salary Update (ATOMICITY Demonstration)</h5>
+                        <p class="mb-0">Select drivers and update their salaries atomically - all or nothing!</p>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Percentage Increase</label>
+                        <input type="number" name="percentage" class="form-control" placeholder="10" min="1" max="100" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-light w-100" onclick="return confirmBulkUpdate()">
+                            <i class="fas fa-calculator"></i> Update Salaries
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Filters -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="GET" class="row align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Filter by Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    {% for value, label in statuses %}
+                                        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Search Drivers</label>
+                                <input type="text" name="q" class="form-control" placeholder="Name, License No, Phone" value="{{ request.GET.q }}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{% url 'driver_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="fas fa-refresh"></i> Reset
+                                </a>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-success w-100" onclick="selectAll()">
+                                    <i class="fas fa-check-square"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Driver List -->
+        <div class="row">
+            {% for driver in drivers %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card driver-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input driver-checkbox" type="checkbox" 
+                                           name="driver_ids" value="{{ driver.id }}" form="bulkSalaryForm">
+                                    <label class="form-check-label">
+                                        <h5 class="card-title mb-0">{{ driver.name }}</h5>
+                                    </label>
+                                </div>
+                                <span class="status-{{ driver.status }}">
+                                    <i class="fas fa-circle"></i>
+                                </span>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-id-card"></i> {{ driver.license_no }}
+                                </small>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-phone"></i> {{ driver.contact_number }}
+                                </small>
+                            </div>
+                            
+                            {% if driver.location %}
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt"></i> {{ driver.location.city }}, {{ driver.location.state }}
+                                    </small>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar"></i> Hired: {{ driver.hired_date|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="salary-badge">
+                                    ৳{{ driver.salary|floatformat:0 }}/month
+                                </div>
+                                <div>
+                                    <span class="badge bg-{{ driver.status|yesno:"success,secondary,warning,danger" }} ms-1">
+                                        {{ driver.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <small class="text-muted">Experience</small>
+                                        <div><strong>{{ driver.experience_years }}y</strong></div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Rating</small>
+                                        <div><strong>{{ driver.rating }}/5</strong></div>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted">Trips</small>
+                                        <div><strong>{{ driver.total_trips }}</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-md-12">
+                    <div class="text-center mt-5">
+                        <i class="fas fa-users fa-5x text-muted mb-3"></i>
+                        <h4>No drivers found</h4>
+                        <p class="text-muted">Try adjusting your search criteria</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if drivers.has_other_pages %}
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if drivers.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ drivers.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in drivers.paginator.page_range %}
+                                {% if drivers.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > drivers.number|add:'-3' and num < drivers.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if drivers.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ drivers.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- DBMS Feature Explanation -->
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fas fa-atom"></i> DBMS Feature: ACID Properties - Atomicity</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Bulk Salary Update Atomicity:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> All driver salaries update together</li>
+                                    <li><i class="fas fa-check text-success"></i> If one fails, all changes rollback</li>
+                                    <li><i class="fas fa-check text-success"></i> Database transaction ensures consistency</li>
+                                    <li><i class="fas fa-check text-success"></i> No partial updates possible</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Real-world Benefits:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-shield-alt text-primary"></i> Prevents data corruption</li>
+                                    <li><i class="fas fa-shield-alt text-primary"></i> Maintains salary consistency</li>
+                                    <li><i class="fas fa-shield-alt text-primary"></i> Handles concurrent access safely</li>
+                                    <li><i class="fas fa-shield-alt text-primary"></i> Provides transaction isolation</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Try it:</strong> Select multiple drivers and apply a salary increase. 
+                            The system uses Django's <code>transaction.atomic()</code> to ensure all changes happen together or not at all!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.driver-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        }
+
+        function confirmBulkUpdate() {
+            const checkedBoxes = document.querySelectorAll('.driver-checkbox:checked');
+            const percentage = document.querySelector('input[name="percentage"]').value;
+            
+            if (checkedBoxes.length === 0) {
+                alert('Please select at least one driver to update.');
+                return false;
+            }
+            
+            if (!percentage || percentage <= 0) {
+                alert('Please enter a valid percentage increase.');
+                return false;
+            }
+            
+            return confirm(`Are you sure you want to increase salaries by ${percentage}% for ${checkedBoxes.length} selected driver(s)? This action uses atomic transactions to ensure data consistency.`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %} Contact Us {% endblock %}
+
+{% block search %}
+
+{% endblock %}
+{% block nav %}
+    <div class="collapse navbar-collapse" id="myNavbar">
+      <ul class="nav navbar-nav navbar-right">
+        <li><a href="{% url 'newcar' %}"><span class="fas fa-car-side"></span> New Added Car</a></li>
+        <li><a href="{% url 'popularcar' %}"><span class="fas fa-star"></span> Popular Car</a></li>
+        <li><a href="{% url 'contact' %}"><span class="fas fa-envelope"></span> Contact</a></li>
+        <li><a href="{% url 'user_messages' %}"><span class="fas fa-comments"></span> Messages</a></li>
+        <li><a href="{% url 'logout' %}"><span class="fas fa-sign-out-alt"></span> Logout</a></li>
+      </ul>
+    </div>
+{% endblock %}
+{% block body %}
+<div class="container" style="margin-top: 80px;">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <!-- Display messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <span class="fas fa-envelope"></span> {{ title }}
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <form method="POST" action="">{% csrf_token %}
+                        {{form|crispy}}
+                        <div class="form-group text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <span class="fas fa-paper-plane"></span> Send Message
+                            </button>
+                            <a href="{% url 'user_messages' %}" class="btn btn-info btn-lg">
+                                <span class="fas fa-comments"></span> View My Messages
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="alert alert-info">
+                <h4><span class="fas fa-info-circle"></span> How to Contact Us</h4>
+                <ul>
+                    <li><strong>General Inquiry:</strong> Ask about our services, pricing, or availability</li>
+                    <li><strong>Complaint:</strong> Report any issues with our service</li>
+                    <li><strong>Feedback:</strong> Share your experience with us</li>
+                    <li><strong>Support Request:</strong> Get help with bookings or technical issues</li>
+                </ul>
+                <p><small><span class="fas fa-clock"></span> We typically respond within 24 hours.</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

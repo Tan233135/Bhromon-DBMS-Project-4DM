@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %} Car Rental Booking {% endblock %}
+
+{% block search_box %}
+
+{% endblock %}
+{% block nav %}
+        <li><a href="{% url 'newcar' %}"><span class="fas fa-car-side"></span> Newly Added Car</a></li>
+        <li><a href="{% url 'popularcar' %}"><span class="fas fa-star"></span> Popular car</a></li>
+        <li><a href="{% url 'logout' %}"><span class="fas fa-sign-out-alt"></span> Logout</a></li>
+{% endblock %}
+{% block body %}
+
+<div class ='col-sm-6 col-sm-offset-3'>
+<!-- Display messages -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="panel panel-primary">
+<p class="list-group-item active">
+    <strong><span class="fas fa-calendar-check"></span> Car Rental Booking</strong>
+  </p><br>
+<form method="POST" action="" >{% csrf_token %}
+
+      {{form|crispy}}
+</div>
+    </div>
+  <div class="form-group row">
+    <div class="col-sm-offset-3 col-sm-10">
+      <button type="submit" class="btn btn-primary" id="submit-btn"><span class="fas fa-calendar-check"></span> Reserve Now</button>
+      <a href="{% url 'car_list' %}" class="btn btn-secondary"><span class="fas fa-arrow-left"></span> Back to Cars</a>
+    </div>
+  </div>
+</form>
+
+<script>
+// Car data for calculation
+const carData = {
+    {% for car in cars %}
+    '{{ car.id }}': {
+        'dailyRate': {{ car.cost_par_day }},
+        'name': '{{ car.car_name }}',
+        'company': '{{ car.company_name }}'
+    },
+    {% endfor %}
+};
+
+function calculateTotal() {
+    const carSelect = document.getElementById('id_car');
+    const fromDate = document.getElementById('id_start_date');
+    const toDate = document.getElementById('id_end_date');
+    const totalAmountField = document.getElementById('id_total_amount');
+    
+    if (carSelect && fromDate && toDate && carSelect.value && fromDate.value && toDate.value) {
+        const carId = carSelect.value;
+        const startDate = new Date(fromDate.value);
+        const endDate = new Date(toDate.value);
+        
+        // Calculate difference in days
+        const timeDiff = endDate.getTime() - startDate.getTime();
+        const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        if (dayDiff > 0 && carData[carId]) {
+            const dailyRate = carData[carId].dailyRate;
+            const totalAmount = dayDiff * dailyRate;
+            totalAmountField.value = totalAmount.toFixed(2);
+            
+            // Update display
+            updatePriceDisplay(dayDiff, dailyRate, totalAmount, carData[carId].name);
+        } else if (dayDiff <= 0) {
+            totalAmountField.value = '0.00';
+            showError('End date must be after start date');
+        } else {
+            totalAmountField.value = '0.00';
+            clearPriceDisplay();
+        }
+    } else {
+        totalAmountField.value = '0.00';
+        clearPriceDisplay();
+    }
+}
+
+function updatePriceDisplay(days, dailyRate, total, carName) {
+    let displayElement = document.getElementById('price-breakdown');
+    if (!displayElement) {
+        // Create price breakdown display
+        displayElement = document.createElement('div');
+        displayElement.id = 'price-breakdown';
+        displayElement.className = 'alert alert-info';
+        displayElement.style.marginTop = '10px';
+        
+        // Insert after total amount field
+        const totalField = document.getElementById('id_total_amount').parentNode;
+        totalField.appendChild(displayElement);
+    }
+    
+    displayElement.innerHTML = `
+        <strong>Price Breakdown for ${carName}:</strong><br>
+        <i class="fas fa-calendar-alt"></i> ${days} day(s) × ${dailyRate} Tk/day = <strong>${total.toFixed(2)} Tk</strong>
+    `;
+}
+
+function showError(message) {
+    let errorElement = document.getElementById('form-error');
+    if (!errorElement) {
+        errorElement = document.createElement('div');
+        errorElement.id = 'form-error';
+        errorElement.className = 'alert alert-danger';
+        errorElement.style.marginTop = '10px';
+        
+        const form = document.querySelector('form');
+        form.prepend(errorElement);
+    }
+    errorElement.innerHTML = message;
+}
+
+function clearPriceDisplay() {
+    const displayElement = document.getElementById('price-breakdown');
+    if (displayElement) {
+        displayElement.remove();
+    }
+     const errorElement = document.getElementById('form-error');
+    if (errorElement) {
+        errorElement.remove();
+    }
+}
+
+// Form validation
+function validateForm() {
+    const carSelect = document.getElementById('id_car');
+    const clientSelect = document.getElementById('id_client');
+    const fromDate = document.getElementById('id_start_date');
+    const toDate = document.getElementById('id_end_date');
+    const totalAmount = document.getElementById('id_total_amount');
+    
+    if (!carSelect.value) {
+        showError('Please select a car.');
+        return false;
+    }
+    
+    if (!clientSelect.value) {
+        showError('Please select a client.');
+        return false;
+    }
+    
+    if (!fromDate.value) {
+        showError('Please select a start date.');
+        return false;
+    }
+    
+    if (!toDate.value) {
+        showError('Please select an end date.');
+        return false;
+    }
+    
+    if (parseFloat(totalAmount.value) <= 0) {
+        showError('Invalid total amount. Please check your dates.');
+        return false;
+    }
+    
+    return true;
+}
+
+// Initialize calculation on page load and add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const carSelect = document.getElementById('id_car');
+    const fromDate = document.getElementById('id_start_date');
+    const toDate = document.getElementById('id_end_date');
+    const form = document.querySelector('form');
+
+    if(carSelect) carSelect.addEventListener('change', calculateTotal);
+    if(fromDate) fromDate.addEventListener('change', calculateTotal);
+    if(toDate) toDate.addEventListener('change', calculateTotal);
+    
+    // Add form submission validation
+    if(form) {
+        form.addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+
+    calculateTotal();
+});
+</script>
+
+{% endblock %}

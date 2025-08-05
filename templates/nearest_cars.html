@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearest Cars - Bhromon DBMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .car-card {
+            transition: transform 0.2s;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .car-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .distance-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        .search-form {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'dashboard' %}">
+                <i class="fas fa-car"></i> Bhromon DBMS
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <h2><i class="fas fa-search-location"></i> Find Nearest Available Cars</h2>
+                <p class="text-muted">Advanced location-based car matching using Haversine distance calculation</p>
+            </div>
+        </div>
+
+        <!-- Search Form -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="search-form">
+                    <form method="GET">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label">Select Location</label>
+                                <select name="location_id" class="form-select" required>
+                                    <option value="">Choose a location...</option>
+                                    {% for location in locations %}
+                                        <option value="{{ location.id }}" 
+                                                {% if selected_location.id == location.id %}selected{% endif %}>
+                                            {{ location.city }}, {{ location.state }}, {{ location.country }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Search Radius (km)</label>
+                                <input type="number" name="radius" class="form-control" 
+                                       value="{{ radius }}" min="1" max="500" placeholder="50">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-light w-100">
+                                    <i class="fas fa-search"></i> Find Cars
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{% url 'nearest_cars' %}" class="btn btn-outline-light w-100">
+                                    <i class="fas fa-refresh"></i> Reset
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if selected_location %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Showing cars within <strong>{{ radius }}km</strong> of 
+                <strong>{{ selected_location.city }}, {{ selected_location.state }}</strong>
+                {% if selected_location.latitude and selected_location.longitude %}
+                    ({{ selected_location.latitude }}, {{ selected_location.longitude }})
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <!-- Results -->
+        {% if cars %}
+            <div class="row">
+                <div class="col-md-12">
+                    <h4><i class="fas fa-car"></i> Available Cars ({{ cars|length }} found)</h4>
+                </div>
+            </div>
+            
+            <div class="row">
+                {% for item in cars %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card car-card h-100">
+                            <div class="position-relative">
+                                {% if item.car.image %}
+                                    <img src="{{ item.car.image.url }}" class="card-img-top" alt="{{ item.car.car_name }}" style="height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                        <i class="fas fa-car fa-3x text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="distance-badge">
+                                    <i class="fas fa-route"></i> {{ item.distance|floatformat:1 }}km
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.car.company_name }} {{ item.car.car_name }}</h5>
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-users"></i> {{ item.car.num_of_seats }} seats
+                                        </small>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-gas-pump"></i> {{ item.car.get_fuel_type_display }}
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-cogs"></i> {{ item.car.get_transmission_display }}
+                                        </small>
+                                    </div>
+                                    <div class="col-6">
+                                        <span class="badge bg-success">{{ item.car.get_status_display }}</span>
+                                    </div>
+                                </div>
+                                {% if item.car.location %}
+                                    <p class="card-text">
+                                        <i class="fas fa-map-marker-alt"></i> 
+                                        {{ item.car.location.city }}, {{ item.car.location.state }}
+                                    </p>
+                                {% endif %}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="text-primary mb-0">৳{{ item.car.cost_par_day }}/day</h5>
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'car_detail' item.car.id %}" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-eye"></i> View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% elif selected_location %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                No available cars found within {{ radius }}km of {{ selected_location.city }}, {{ selected_location.state }}.
+                Try increasing the search radius.
+            </div>
+        {% else %}
+            <div class="text-center mt-5">
+                <i class="fas fa-search-location fa-5x text-muted mb-3"></i>
+                <h4>Select a location to find nearby cars</h4>
+                <p class="text-muted">Use the search form above to find available cars in your area</p>
+            </div>
+        {% endif %}
+
+        <!-- DBMS Feature Explanation -->
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="fas fa-info-circle"></i> DBMS Feature: Location-Based Matching</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>How it works:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success"></i> Uses Haversine formula for distance calculation</li>
+                                    <li><i class="fas fa-check text-success"></i> Calculates earth's curvature for accurate distances</li>
+                                    <li><i class="fas fa-check text-success"></i> Filters cars within specified radius</li>
+                                    <li><i class="fas fa-check text-success"></i> Sorts results by proximity</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Database Concepts:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-database text-primary"></i> Spatial data with latitude/longitude</li>
+                                    <li><i class="fas fa-database text-primary"></i> Complex mathematical queries</li>
+                                    <li><i class="fas fa-database text-primary"></i> Index optimization for location searches</li>
+                                    <li><i class="fas fa-database text-primary"></i> Real-world geographic problem solving</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

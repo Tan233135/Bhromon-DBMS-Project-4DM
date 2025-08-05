@@ -1,0 +1,71 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Bhromon{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.svg' %}">
+
+    <link href="http://fonts.googleapis.com/css?family=Lato" rel="stylesheet" type="text/css">
+    <link href="http://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <!-- Font Awesome for modern icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+
+<nav class="navbar navbar-custom navbar-fixed-top">
+  <div class="container">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+        <span class="fas fa-bars"></span>
+
+      </button>
+      <a href="{% url 'home' %}" class="navbar-brand"><span class="fas fa-car"></span> Bhromon</a>
+
+
+    </div>
+
+      <div class="collapse navbar-collapse" id="myNavbar">
+        {% block search %}
+            <!-- search box-->
+            <form method="GET" class="navbar-form navbar-left" role="search">
+                <div class="form-group">
+                    <input type="text" class="form-control" placeholder="Car Search" value="{{request.GET.q}}" name="q">
+                </div>
+                <button type="submit" class="btn btn-primary"><span class="fas fa-search"></span> Search</button>
+            </form>
+        {% endblock %}
+        
+        <ul class="nav navbar-nav navbar-right">
+            {% block nav %}
+                <li><a href="{% url 'newcar' %}"><span class="fas fa-car-side"></span> Newly Added Car</a></li>
+                <li><a href="{% url 'popularcar' %}"><span class="fas fa-star"></span> Popular car</a></li>
+                <li><a href="{% url 'contact' %}"><span class="fas fa-envelope"></span> Contact</a></li>
+                <li><a href="{% url 'logout' %}"><span class="fas fa-sign-out-alt"></span> Logout</a></li>
+            {% endblock %}
+        </ul>
+      </div>
+
+
+  </div>
+</nav>
+
+
+{% block body %}
+<div class="container">
+
+</div>
+{% endblock %}
+</body>
+</html>
